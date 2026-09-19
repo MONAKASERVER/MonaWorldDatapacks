@@ -1,0 +1,21 @@
+plugin:
+  debug: false
+  language: ja_JP
+compiler:
+  cache: true
+  output-format: ZIP
+  namespace-prefix: mwd
+  max-pack-size-mb: 512
+  max-uncompressed-size-mb: 2048
+  max-single-file-size-mb: 64
+  max-files: 100000
+safety:
+  strict-mode: true
+  reject-global-registry-overrides: true
+  reject-unknown-resources: true
+  reject-existing-generated-world: true
+  allow-experimental-runtime-scope: false
+multiverse:
+  auto-import: true
+  validate-on-startup: true
+

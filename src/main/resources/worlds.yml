@@ -1,0 +1,22 @@
+worlds:
+  resource_nether:
+    enabled: false
+    environment: NETHER
+    datapacks:
+      - id: incendium
+        priority: 100
+    profile: INCENDIUM
+    source-dimension: minecraft:the_nether
+    strategy: SCOPED_WORLDGEN
+    existing-world-policy: REFUSE
+  resource_end:
+    enabled: false
+    environment: THE_END
+    datapacks:
+      - id: stellarity
+        priority: 100
+    profile: STELLARITY
+    source-dimension: minecraft:the_end
+    strategy: SCOPED_WORLDGEN
+    existing-world-policy: REFUSE
+

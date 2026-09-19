@@ -1,0 +1,34 @@
+name: MonaWorldDatapacks
+version: '${version}'
+main: net.monacraft.mwd.plugin.MonaWorldDatapacksPlugin
+bootstrapper: net.monacraft.mwd.bootstrap.MonaWorldDatapacksBootstrap
+api-version: '1.21.11'
+description: Safely compiles worldgen datapacks into isolated custom dimensions.
+authors: [MONAKA SERVER]
+website: https://www.monacraft.net/
+dependencies:
+  server:
+    Multiverse-Core:
+      load: BEFORE
+      required: true
+      join-classpath: true
+permissions:
+  monaworlddatapacks.admin:
+    default: op
+    children:
+      monaworlddatapacks.status: true
+      monaworlddatapacks.scan: true
+      monaworlddatapacks.compile: true
+      monaworlddatapacks.assign: true
+      monaworlddatapacks.doctor: true
+  monaworlddatapacks.status:
+    default: op
+  monaworlddatapacks.scan:
+    default: op
+  monaworlddatapacks.compile:
+    default: op
+  monaworlddatapacks.assign:
+    default: op
+  monaworlddatapacks.doctor:
+    default: op
+
