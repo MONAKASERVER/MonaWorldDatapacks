@@ -207,6 +207,15 @@ Windows:
 .\gradlew.bat clean build
 ```
 
-成果物: `build/libs/MonaWorldDatapacks-1.0.0.jar`
+成果物: `build/libs/MonaWorldDatapacks-1.0.1.jar`
+
+`resource_nether`と`resource_end`は設定例であり、固定されたワールド名ではありません。たとえば次のように任意名を割り当てられます。
+
+```text
+/mwd assign test_nether incendium INCENDIUM
+/mwd compile test_nether
+```
+
+`assign`と`unassign`は保存後すぐコマンド用設定へ再読込されます。生成済みデータパックのDiscoveryとワールドへの実適用には、引き続き通常再起動が必要です。
 
 JUnit 5にはResourceLocation、namespace mapper、JSON rewrite、dependency graph、cycle/missing reference、SHA-256、Zip Slip/size limit、world名sanitizer、priority/conflict、Incendium/Stellarity風fixture、生成ZIPのglobal汚染防止テストが含まれます。

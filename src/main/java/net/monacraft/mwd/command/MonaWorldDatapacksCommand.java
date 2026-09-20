@@ -104,10 +104,12 @@ public final class MonaWorldDatapacksCommand implements BasicCommand {
     private void assign(CommandSender sender, String[] args) throws IOException {
         String profile = args.length > 3 ? args[3] : "GENERIC"; new ProfileRegistry().named(profile);
         new AssignmentStore(BootstrapState.get().dataDirectory()).assign(args[1], args[2], profile);
-        message(sender, "<green>割り当てを保存しました。</green> <yellow>安全な反映にはサーバー再起動が必要です。/reloadは使用しないでください。</yellow>");
+        BootstrapState.reloadConfiguration();
+        message(sender, "<green>割り当てを保存し、コマンド用設定へ反映しました。</green> <white>/mwd compile " + escape(args[1]) + "</white> <yellow>で生成後、実際の反映には再起動が必要です。</yellow>");
     }
     private void unassign(CommandSender sender, String world, String pack) throws IOException {
         new AssignmentStore(BootstrapState.get().dataDirectory()).unassign(world, pack);
+        BootstrapState.reloadConfiguration();
         message(sender, "<green>割り当てを解除しました。</green> <yellow>反映にはサーバー再起動が必要です。</yellow>");
     }
     private void compile(CommandSender sender, String world) {
@@ -115,6 +117,7 @@ public final class MonaWorldDatapacksCommand implements BasicCommand {
         List<WorldAssignment> targets = state.configuration().worlds().values().stream().filter(WorldAssignment::enabled).filter(a -> world == null || a.worldName().equalsIgnoreCase(world)).toList();
         if (targets.isEmpty()) throw new CommandFailure("No enabled assignment matched");
         List<CompilationResult> results = targets.stream().map(compiler::compile).toList();
+        BootstrapState.recordCompilations(results);
         sync(() -> { for (CompilationResult result : results) message(sender, result.success() ? "<green>Compiled " + escape(result.world()) + " -> " + result.dimensionKey() + "</green> <yellow>再起動後にdiscoverされます。</yellow>" : "<red>Failed " + escape(result.world()) + ": " + escape(String.join("; ", result.messages())) + "</red>"); });
     }
     private void doctor(CommandSender sender, String world) {
@@ -124,8 +127,8 @@ public final class MonaWorldDatapacksCommand implements BasicCommand {
         }
     }
     private void reload(CommandSender sender) throws IOException {
-        new ConfigManager(BootstrapState.get().dataDirectory()).load();
-        message(sender, "<green>設定ファイルの構文を確認しました。</green> <yellow>datapack registryはfreeze済みのため、実際の反映には再起動が必要です。</yellow>");
+        BootstrapState state = BootstrapState.reloadConfiguration();
+        message(sender, "<green>設定を再読込しました。</green> <white>割り当て: " + state.configuration().worlds().size() + "</white> <yellow>datapack registryへの実際の反映には再起動が必要です。</yellow>");
     }
     private void help(CommandSender sender) { message(sender, "<gold>/mwd</gold> <gray>status|packs|worlds|info|scan|assign|unassign|compile|doctor|report|reload-config|version</gray>"); }
     private void async(CommandSender sender, IoAction action) {
