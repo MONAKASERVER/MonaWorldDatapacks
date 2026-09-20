@@ -4,6 +4,7 @@ import net.monacraft.mwd.config.*;
 import net.monacraft.mwd.pack.*;
 import net.monacraft.mwd.resource.ResourceLocation;
 import net.monacraft.mwd.security.ZipLimits;
+import net.kyori.adventure.nbt.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import java.io.*;
@@ -25,7 +26,7 @@ class DatapackCompilerIntegrationTest {
             write(out, "data/incendium/worldgen/structure/castle.json", "{\"type\":\"minecraft:jigsaw\",\"biomes\":\"#incendium:structure/has_castle\"}");
             write(out, "data/incendium/tags/worldgen/biome/structure/has_castle.json", "{\"values\":[\"minecraft:nether_wastes\"]}");
             write(out, "data/incendium/worldgen/template_pool/castle/start.json", "{\"fallback\":\"minecraft:empty\",\"elements\":[{\"weight\":1,\"element\":{\"element_type\":\"minecraft:single_pool_element\",\"location\":\"incendium:castle/start\",\"processors\":\"minecraft:empty\",\"projection\":\"rigid\"}}]}");
-            write(out, "data/incendium/structure/castle/start.nbt", new byte[] { 10, 0, 0, 0 });
+            write(out, "data/incendium/structure/castle/start.nbt", structureNbt("incendium:castle/start"));
         }
         PluginConfiguration config = new PluginConfiguration(false, true, "ZIP", "mwd", ZipLimits.defaults(), true, true, true, true, false, true, true);
         DatapackManager manager = new DatapackManager(data, config.zipLimits());
@@ -46,8 +47,12 @@ class DatapackCompilerIntegrationTest {
             assertThat(structure).contains("#mwd_test_nether:structure/has_castle");
             String pool = new String(zip.getInputStream(zip.getEntry("data/mwd_test_nether/worldgen/template_pool/castle/start.json")).readAllBytes());
             assertThat(pool).contains("mwd_test_nether:castle/start").doesNotContain("incendium:castle/start");
-            assertThat(zip.getInputStream(zip.getEntry("data/mwd_test_nether/structure/castle/start.nbt")).readAllBytes())
-                    .containsExactly(10, 0, 0, 0);
+            byte[] structureBytes = zip.getInputStream(zip.getEntry("data/mwd_test_nether/structure/castle/start.nbt")).readAllBytes();
+            try (ByteArrayInputStream input = new ByteArrayInputStream(structureBytes)) {
+                CompoundBinaryTag structureNbt = BinaryTagIO.readCompressedInputStream(input);
+                assertThat(structureNbt.getCompound("block").getString("pool"))
+                        .isEqualTo("mwd_test_nether:castle/start");
+            }
             String meta = new String(zip.getInputStream(zip.getEntry("pack.mcmeta")).readAllBytes());
             assertThat(meta).contains("min_format", "94", "1");
         }
@@ -113,5 +118,12 @@ class DatapackCompilerIntegrationTest {
     }
     private static void write(ZipOutputStream out, String name, byte[] value) throws IOException {
         out.putNextEntry(new ZipEntry(name)); out.write(value); out.closeEntry();
+    }
+    private static byte[] structureNbt(String pool) throws IOException {
+        CompoundBinaryTag block = CompoundBinaryTag.builder().putString("pool", pool).build();
+        CompoundBinaryTag root = CompoundBinaryTag.builder().put("block", block).build();
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        BinaryTagIO.writeCompressedOutputStream(root, output);
+        return output.toByteArray();
     }
 }

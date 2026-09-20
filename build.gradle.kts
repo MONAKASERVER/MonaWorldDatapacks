@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "net.monacraft"
-version = "1.0.4"
+version = "1.0.5"
 
 repositories {
     mavenCentral()
@@ -18,6 +18,7 @@ dependencies {
 
     implementation("com.google.code.gson:gson:2.13.2")
     implementation("org.yaml:snakeyaml:2.5")
+    implementation("net.kyori:adventure-nbt:4.26.1")
 
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -50,6 +51,7 @@ tasks {
         archiveBaseName.set("MonaWorldDatapacks")
         relocate("com.google.gson", "net.monacraft.mwd.lib.gson")
         relocate("org.yaml.snakeyaml", "net.monacraft.mwd.lib.snakeyaml")
+        relocate("net.kyori.adventure.nbt", "net.monacraft.mwd.lib.nbt")
     }
     jar {
         archiveClassifier.set("plain")

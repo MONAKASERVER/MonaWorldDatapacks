@@ -34,7 +34,7 @@ Paperのexperimentalな[Datapack Discovery API](https://docs.papermc.io/paper/de
 ## インストール
 
 1. Paper 1.21.11とMultiverse-Core 5.xを用意する。
-2. `MonaWorldDatapacks-1.0.4.jar`を`plugins/`へ置く。
+2. `MonaWorldDatapacks-1.0.5.jar`を`plugins/`へ置く。
 3. 一度起動して`plugins/MonaWorldDatapacks/`を生成する。
 4. 停止後、元データパックZIPを`packs/`へ置く。
 5. `worlds.yml`へ割り当てを記述する。
@@ -118,7 +118,7 @@ JSON内の文字列を一括置換しません。既知のregistry schema field�
 
 `reject-global-registry-overrides: true`は、server-globalリソースを生成ZIPへ混入させないための安全方針です。元ZIPにserver-globalリソースが含まれること自体はエラーではありません。コンパイル成功メッセージと`mwd-manifest.json`に除外件数を記録します。元パックはglobal enableされないため、除外されたレシピ・進捗・function等は対象ワールドでも動作しません。
 
-Incendium 5.4.12の`data/c/worldgen/biome_colors.json`と`structure_icons.json`は地形生成registryではなく、表示色・アイコン用のConventionメタデータとして認識し、生成ZIPから除外します。この2ファイル以外の未知worldgen resourceを一括許可することはありません。`data/*/structure/*.nbt`は建造物生成に必要なため、worldgen biome tagとともに専用namespaceへcloneします。
+Incendium 5.4.12の`data/c/worldgen/biome_colors.json`と`structure_icons.json`は地形生成registryではなく、表示色・アイコン用のConventionメタデータとして認識し、生成ZIPから除外します。この2ファイル以外の未知worldgen resourceを一括許可することはありません。`data/*/structure/*.nbt`は建造物生成に必要なため、worldgen biome tagとともに専用namespaceへcloneし、NBT内のジグソーブロックが持つ`pool`参照も変換します。
 
 ## コマンド
 
@@ -213,7 +213,7 @@ Windows:
 .\gradlew.bat clean build
 ```
 
-成果物: `build/libs/MonaWorldDatapacks-1.0.4.jar`
+成果物: `build/libs/MonaWorldDatapacks-1.0.5.jar`
 
 `resource_nether`と`resource_end`は設定例であり、固定されたワールド名ではありません。たとえば次のように任意名を割り当てられます。
 

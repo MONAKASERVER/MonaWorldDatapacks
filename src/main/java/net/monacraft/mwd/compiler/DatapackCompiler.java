@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.zip.*;
 
 public final class DatapackCompiler {
-    public static final String TRANSFORM_VERSION = "12";
+    public static final String TRANSFORM_VERSION = "13";
     private final Path dataDirectory;
     private final PluginConfiguration config;
     private final DatapackManager manager;
@@ -61,6 +61,7 @@ public final class DatapackCompiler {
 
             Path temporary = output.resolveSibling(output.getFileName() + ".tmp"); Files.deleteIfExists(temporary);
             JsonResourceRewriter rewriter = new JsonResourceRewriter();
+            NbtStructureRewriter nbtRewriter = new NbtStructureRewriter();
             try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(temporary, StandardOpenOption.CREATE_NEW))) {
                 JsonObject meta = new JsonObject(), pack = new JsonObject();
                 JsonArray minimum = new JsonArray(); minimum.add(94); minimum.add(1);
@@ -75,7 +76,8 @@ public final class DatapackCompiler {
                     // as well would expose an unintended second dimension.
                     if (key.type() == ResourceType.DIMENSION) continue;
                     ResourceNode node = entry.getValue();
-                    if (node.isBinary()) write(zip, resourcePath(key.type(), mapped, true), node.binary());
+                    if (node.isBinary()) write(zip, resourcePath(key.type(), mapped, true),
+                            nbtRewriter.rewrite(node.binary(), mapper));
                     else {
                         JsonElement rewritten = rewriter.rewrite(node.json(), key.type(), mapper);
                         write(zip, resourcePath(key.type(), mapped, false), gson.toJson(rewritten));
