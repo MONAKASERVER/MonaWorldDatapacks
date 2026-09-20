@@ -5,7 +5,7 @@ Paper 1.21.11 + Multiverse-Core 5.x向けの、**worldgenデータパックを�
 Minecraftのデータパックはサーバー全体のdata registryへ読み込まれます。本プラグインは元パックをそのまま有効化せず、既知のworldgenリソースだけをワールド専用namespaceへcloneし、参照をJSON tree上で書き換え、専用Dimensionを生成します。
 
 > [!IMPORTANT]
-> 「Minecraftの全データパック機能を完全にper-world化する」プラグインではありません。recipe、advancement、enchantment、damage type、load/tick functionなどはserver-globalです。strict modeでは安全に分離できないパックを登録しません。
+> 「Minecraftの全データパック機能を完全にper-world化する」プラグインではありません。recipe、advancement、enchantment、damage type、load/tick functionなどはserver-globalです。これらは元パック内に存在していても生成ZIPへ含めず、既知のworldgen部分だけを分離します。worldgen側の未知形式・欠損参照・非対応pack formatはstrict modeで拒否します。
 
 ## 対象環境
 
@@ -34,7 +34,7 @@ Paperのexperimentalな[Datapack Discovery API](https://docs.papermc.io/paper/de
 ## インストール
 
 1. Paper 1.21.11とMultiverse-Core 5.xを用意する。
-2. `MonaWorldDatapacks-1.0.0.jar`を`plugins/`へ置く。
+2. `MonaWorldDatapacks-1.0.2.jar`を`plugins/`へ置く。
 3. 一度起動して`plugins/MonaWorldDatapacks/`を生成する。
 4. 停止後、元データパックZIPを`packs/`へ置く。
 5. `worlds.yml`へ割り当てを記述する。
@@ -114,6 +114,8 @@ safety:
 
 JSON内の文字列を一括置換しません。既知のregistry schema fieldとtag valuesだけをResourceLocationとして扱い、説明文などは変更しません。`minecraft:*`は組み込み参照として維持し、元パックが実際にoverrideしたworldgen entryだけをcloneします。
 
+`reject-global-registry-overrides: true`は、server-globalリソースを生成ZIPへ混入させないための安全方針です。元ZIPにserver-globalリソースが含まれること自体はエラーではありません。コンパイル成功メッセージと`mwd-manifest.json`に除外件数を記録します。元パックはglobal enableされないため、除外されたレシピ・進捗・function等は対象ワールドでも動作しません。
+
 ## コマンド
 
 `/mwd`（alias: `/monaworlddatapacks`, `/mvdp`）
@@ -157,7 +159,7 @@ JSON内の文字列を一括置換しません。既知のregistry schema field�
 | 既知worldgen JSONのnamespace分離 | SUPPORTED | synthetic integration test済み |
 | Vanilla Nether + Incendium風Nether | SUPPORTED（コンパイラ） | 実Incendiumの版ごとに`/mwd scan`と実サーバーテストが必要 |
 | Vanilla End + Stellarity風End | SUPPORTED（コンパイラ） | 同上 |
-| real Incendium/Stellarityのruntime機能 | PARTIAL | function/loot等は除外。strictではglobal要素があるパックを拒否 |
+| real Incendium/Stellarityのruntime機能 | PARTIAL | function/loot等は除外。worldgen部分のみコンパイル |
 | recipe/advancement/enchantment/damage type | UNSUPPORTED per-world | Minecraftのserver-global registry |
 | load/tick function | UNSUPPORTED in strict | selectorや副作用をDimensionへ完全拘束できない |
 | 未知registry/schema | UNSUPPORTED in strict | 推測変換しない |
@@ -207,7 +209,7 @@ Windows:
 .\gradlew.bat clean build
 ```
 
-成果物: `build/libs/MonaWorldDatapacks-1.0.1.jar`
+成果物: `build/libs/MonaWorldDatapacks-1.0.2.jar`
 
 `resource_nether`と`resource_end`は設定例であり、固定されたワールド名ではありません。たとえば次のように任意名を割り当てられます。
 

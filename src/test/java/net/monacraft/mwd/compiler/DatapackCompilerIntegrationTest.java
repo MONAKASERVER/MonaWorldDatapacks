@@ -39,6 +39,55 @@ class DatapackCompilerIntegrationTest {
             assertThat(meta).contains("min_format", "94", "1");
         }
     }
+
+    @Test void omitsServerGlobalAndUnrelatedUnknownResourcesWithoutRejectingWorldgen() throws IOException {
+        Path data = temp.resolve("plugins/MonaWorldDatapacks"); Files.createDirectories(data.resolve("packs"));
+        Path source = data.resolve("packs/full-pack.zip");
+        try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(source))) {
+            write(out, "pack.mcmeta", "{\"pack\":{\"min_format\":[94,1],\"max_format\":[94,1],\"description\":\"fixture\"}}");
+            write(out, "data/minecraft/worldgen/noise_settings/nether.json", "{\"final_density\":\"fixture:terrain/lower\"}");
+            write(out, "data/fixture/worldgen/density_function/terrain/lower.json", "{\"type\":\"minecraft:constant\",\"argument\":0.0}");
+            write(out, "data/fixture/recipe/example.json", "{\"type\":\"minecraft:crafting_shapeless\",\"ingredients\":[\"minecraft:stone\"],\"result\":{\"id\":\"minecraft:diamond\"}}");
+            write(out, "data/fixture/function/load.mcfunction", "say this must not become global");
+            write(out, "data/fixture/future_global_registry/example.json", "{\"value\":\"fixture:anything\"}");
+        }
+        PluginConfiguration config = new PluginConfiguration(false, true, "ZIP", "mwd", ZipLimits.defaults(), true, true, true, true, false, true, true);
+        DatapackManager manager = new DatapackManager(data, config.zipLimits());
+        WorldAssignment assignment = new WorldAssignment("test_nether", true, "NETHER", List.of(new PackAssignment("full-pack", 100)),
+                "GENERIC", new ResourceLocation("minecraft", "the_nether"), "SCOPED_WORLDGEN", ExistingWorldPolicy.REFUSE);
+
+        CompilationResult result = new DatapackCompiler(data, config, manager).compile(assignment);
+
+        assertThat(result.success()).as(String.join("; ", result.messages())).isTrue();
+        assertThat(result.messages()).anyMatch(message -> message.contains("Omitted 2 server-global resource(s)"));
+        assertThat(result.messages()).anyMatch(message -> message.contains("Omitted 1 non-worldgen unknown resource(s)"));
+        try (ZipFile zip = new ZipFile(result.output().toFile())) {
+            assertThat(zip.getEntry("data/fixture/recipe/example.json")).isNull();
+            assertThat(zip.getEntry("data/fixture/function/load.mcfunction")).isNull();
+            assertThat(zip.getEntry("data/fixture/future_global_registry/example.json")).isNull();
+            String manifest = new String(zip.getInputStream(zip.getEntry("mwd-manifest.json")).readAllBytes());
+            assertThat(manifest).contains("\"omitted_server_global_resources\": 2", "\"omitted_unknown_resources\": 1");
+        }
+    }
+
+    @Test void stillRejectsUnknownWorldgenRegistryInStrictMode() throws IOException {
+        Path data = temp.resolve("plugins/MonaWorldDatapacks"); Files.createDirectories(data.resolve("packs"));
+        Path source = data.resolve("packs/unsafe.zip");
+        try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(source))) {
+            write(out, "pack.mcmeta", "{\"pack\":{\"min_format\":[94,1],\"max_format\":[94,1],\"description\":\"fixture\"}}");
+            write(out, "data/minecraft/worldgen/noise_settings/nether.json", "{\"final_density\":0.0}");
+            write(out, "data/fixture/worldgen/future_registry/example.json", "{\"value\":1}");
+        }
+        PluginConfiguration config = new PluginConfiguration(false, true, "ZIP", "mwd", ZipLimits.defaults(), true, true, true, true, false, true, true);
+        DatapackManager manager = new DatapackManager(data, config.zipLimits());
+        WorldAssignment assignment = new WorldAssignment("test_nether", true, "NETHER", List.of(new PackAssignment("unsafe", 100)),
+                "GENERIC", new ResourceLocation("minecraft", "the_nether"), "SCOPED_WORLDGEN", ExistingWorldPolicy.REFUSE);
+
+        CompilationResult result = new DatapackCompiler(data, config, manager).compile(assignment);
+
+        assertThat(result.success()).isFalse();
+        assertThat(result.messages()).anyMatch(message -> message.contains("unknown worldgen resources/references"));
+    }
     private static void write(ZipOutputStream out, String name, String value) throws IOException {
         out.putNextEntry(new ZipEntry(name)); out.write(value.getBytes()); out.closeEntry();
     }

@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.zip.*;
 
 public final class DatapackCompiler {
-    public static final String TRANSFORM_VERSION = "1";
+    public static final String TRANSFORM_VERSION = "2";
     private final Path dataDirectory;
     private final PluginConfiguration config;
     private final DatapackManager manager;
@@ -35,12 +35,10 @@ public final class DatapackCompiler {
             DatapackProfile profile = new ProfileRegistry().named(assignment.profile());
             for (PackAssignment pack : assignment.datapacks()) {
                 DatapackAnalysis analysis = manager.scan(pack.id()); analyses.put(pack.id(), analysis);
-                int global = analysis.compatibility().counts().getOrDefault(net.monacraft.mwd.compatibility.ScopeClass.SERVER_GLOBAL, 0);
-                if (config.rejectGlobalRegistryOverrides() && global > 0)
-                    return CompilationResult.failure(assignment.worldName(), "Safety policy rejects " + global + " server-global resource(s) in " + pack.id());
-                if (config.rejectUnknownResources() && (!analysis.compatibility().unknownResources().isEmpty() || !analysis.compatibility().unknownReferences().isEmpty()))
-                    return CompilationResult.failure(assignment.worldName(), "Safety policy rejects unknown resources/references in " + pack.id());
-                if (config.strictMode() && !analysis.compatibility().safeForStrictMode())
+                if (config.rejectUnknownResources() && (!analysis.compatibility().unsafeScopedUnknownResources().isEmpty()
+                        || !analysis.compatibility().unknownReferences().isEmpty()))
+                    return CompilationResult.failure(assignment.worldName(), "Safety policy rejects unknown worldgen resources/references in " + pack.id());
+                if (config.strictMode() && !analysis.compatibility().safeForScopedCompilation())
                     return CompilationResult.failure(assignment.worldName(), "Strict mode rejected " + pack.id() + ": " + analysis.compatibility().result() + " " + analysis.compatibility().problems());
             }
             DatapackAnalysis primary = analyses.values().stream().filter(profile::matches).findFirst().orElse(analyses.values().stream().findFirst().orElse(null));
@@ -59,7 +57,7 @@ public final class DatapackCompiler {
             if (config.cache() && Files.isRegularFile(output) && Files.isRegularFile(marker)
                     && Files.readString(marker).trim().equals(cacheKey))
                 return new CompilationResult(assignment.worldName(), true, true, output, namespace,
-                        namespace + ':' + safeWorldPath(assignment.worldName()), List.of("Compiled cache reused"), resolved.conflicts());
+                        namespace + ':' + safeWorldPath(assignment.worldName()), successMessages(analyses, true), resolved.conflicts());
 
             Path temporary = output.resolveSibling(output.getFileName() + ".tmp"); Files.deleteIfExists(temporary);
             JsonResourceRewriter rewriter = new JsonResourceRewriter();
@@ -84,7 +82,7 @@ public final class DatapackCompiler {
             Path markerTmp = marker.resolveSibling(marker.getFileName() + ".tmp"); Files.writeString(markerTmp, cacheKey, StandardCharsets.UTF_8);
             atomicReplace(markerTmp, marker);
             return new CompilationResult(assignment.worldName(), true, false, output, namespace,
-                    namespace + ':' + safeWorldPath(assignment.worldName()), List.of("Compiled safely"), resolved.conflicts());
+                    namespace + ':' + safeWorldPath(assignment.worldName()), successMessages(analyses, false), resolved.conflicts());
         } catch (IOException | RuntimeException e) {
             return CompilationResult.failure(assignment.worldName(), e.getClass().getSimpleName() + ": " + e.getMessage());
         }
@@ -113,7 +111,24 @@ public final class DatapackCompiler {
         JsonObject root = new JsonObject(); root.addProperty("transform_version", TRANSFORM_VERSION); root.addProperty("minecraft", "1.21.11");
         root.addProperty("world", a.worldName()); root.addProperty("namespace", namespace); root.addProperty("cache_key", cacheKey);
         JsonObject hashes = new JsonObject(); analyses.forEach((id, analysis) -> hashes.addProperty(id, analysis.sha256())); root.add("source_hashes", hashes);
+        root.addProperty("omitted_server_global_resources", count(analyses, net.monacraft.mwd.compatibility.ScopeClass.SERVER_GLOBAL));
+        root.addProperty("omitted_runtime_resources", count(analyses, net.monacraft.mwd.compatibility.ScopeClass.RUNTIME_SCOPABLE));
+        root.addProperty("omitted_unknown_resources", count(analyses, net.monacraft.mwd.compatibility.ScopeClass.UNKNOWN));
         return gson.toJson(root);
+    }
+    private List<String> successMessages(Map<String, DatapackAnalysis> analyses, boolean cacheHit) {
+        List<String> messages = new ArrayList<>();
+        messages.add(cacheHit ? "Compiled cache reused" : "Compiled safely");
+        int global = count(analyses, net.monacraft.mwd.compatibility.ScopeClass.SERVER_GLOBAL);
+        int runtime = count(analyses, net.monacraft.mwd.compatibility.ScopeClass.RUNTIME_SCOPABLE);
+        int unknown = count(analyses, net.monacraft.mwd.compatibility.ScopeClass.UNKNOWN);
+        if (global > 0) messages.add("Omitted " + global + " server-global resource(s); source packs were not globally enabled");
+        if (runtime > 0) messages.add("Omitted " + runtime + " runtime resource(s)");
+        if (unknown > 0) messages.add("Omitted " + unknown + " non-worldgen unknown resource(s)");
+        return List.copyOf(messages);
+    }
+    private static int count(Map<String, DatapackAnalysis> analyses, net.monacraft.mwd.compatibility.ScopeClass scope) {
+        return analyses.values().stream().mapToInt(a -> a.compatibility().counts().getOrDefault(scope, 0)).sum();
     }
     private static String safeWorldPath(String name) { return WorldNameSanitizer.namespace("world", name).substring("world_".length()); }
     private static String resourcePath(ResourceType type, ResourceLocation location) {

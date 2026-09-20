@@ -87,7 +87,9 @@ public final class MonaWorldDatapacksCommand implements BasicCommand {
             message(sender, "<gray>Namespaces:</gray> <white>" + escape(String.join(", ", a.namespaces())) + "</white>");
             message(sender, "<gray>Worldgen:</gray> <white>" + a.worldgenCount() + "</white> <gray>Functions:</gray> <white>" + a.count(net.monacraft.mwd.resource.ResourceType.FUNCTION) + "</white>");
             message(sender, "<gray>Detected profile:</gray> <white>" + detected.id() + "</white> <gray>source:</gray> <white>" + detected.sourceDimension() + "</white>");
-            message(sender, "<gray>Compatibility:</gray> " + (a.compatibility().safeForStrictMode() ? "<green>SUPPORTED</green>" : "<yellow>" + a.compatibility().result() + "</yellow>"));
+            message(sender, "<gray>Compatibility:</gray> " + (a.compatibility().safeForScopedCompilation()
+                    ? "<green>SCOPED_WORLDGEN_SUPPORTED</green> <gray>(source: " + a.compatibility().result() + ")</gray>"
+                    : "<yellow>" + a.compatibility().result() + "</yellow>"));
             if (writeReport) message(sender, "<green>Report:</green> <white>" + escape(reportPath.toString()) + "</white>");
         });
     }
@@ -118,7 +120,9 @@ public final class MonaWorldDatapacksCommand implements BasicCommand {
         if (targets.isEmpty()) throw new CommandFailure("No enabled assignment matched");
         List<CompilationResult> results = targets.stream().map(compiler::compile).toList();
         BootstrapState.recordCompilations(results);
-        sync(() -> { for (CompilationResult result : results) message(sender, result.success() ? "<green>Compiled " + escape(result.world()) + " -> " + result.dimensionKey() + "</green> <yellow>再起動後にdiscoverされます。</yellow>" : "<red>Failed " + escape(result.world()) + ": " + escape(String.join("; ", result.messages())) + "</red>"); });
+        sync(() -> { for (CompilationResult result : results) message(sender, result.success()
+                ? "<green>Compiled " + escape(result.world()) + " -> " + result.dimensionKey() + "</green> <gray>" + escape(String.join("; ", result.messages())) + "</gray> <yellow>再起動後にdiscoverされます。</yellow>"
+                : "<red>Failed " + escape(result.world()) + ": " + escape(String.join("; ", result.messages())) + "</red>"); });
     }
     private void doctor(CommandSender sender, String world) {
         for (DiagnosticResult result : new DoctorService().run(world)) {

@@ -37,7 +37,11 @@ public final class DatapackScanner {
                     String contents = new String(zip.read(name), StandardCharsets.UTF_8);
                     JsonElement json = name.endsWith(".json") ? JsonParser.parseString(contents) : new JsonPrimitive(contents);
                     ReferenceScanner.ScanResult refs = referenceScanner.scan(parsed.key, json);
-                    unknownRefs.addAll(refs.unknownReferenceCandidates());
+                    // Unknown references in recipes/functions/etc. are harmless to the
+                    // scoped output because those resources are never copied. Keep the
+                    // strict check for resources that can affect generated terrain.
+                    if (parsed.key.type().worldgen() || looksLikeWorldgenResource(parsed.key))
+                        unknownRefs.addAll(refs.unknownReferenceCandidates());
                     resources.add(new ResourceNode(parsed.key, json, Path.of(name), refs.references(), id));
                 } catch (JsonParseException e) {
                     errors.add("Broken JSON " + name + ": " + e.getMessage());
@@ -121,6 +125,12 @@ public final class DatapackScanner {
     }
     private static List<ResourceNode> deduplicate(List<ResourceNode> nodes) {
         Map<ResourceKey, ResourceNode> unique = new LinkedHashMap<>(); nodes.forEach(n -> unique.putIfAbsent(n.key(), n)); return List.copyOf(unique.values());
+    }
+    private static boolean looksLikeWorldgenResource(ResourceKey key) {
+        String path = key.location().path();
+        return path.equals("worldgen") || path.startsWith("worldgen/")
+                || path.equals("dimension") || path.startsWith("dimension/")
+                || path.equals("dimension_type") || path.startsWith("dimension_type/");
     }
     private record ParsedPath(ResourceKey key) {}
 }
