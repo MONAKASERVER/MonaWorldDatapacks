@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.zip.*;
 
 public final class DatapackCompiler {
-    public static final String TRANSFORM_VERSION = "3";
+    public static final String TRANSFORM_VERSION = "12";
     private final Path dataDirectory;
     private final PluginConfiguration config;
     private final DatapackManager manager;
@@ -70,8 +70,16 @@ public final class DatapackCompiler {
                 write(zip, "pack.mcmeta", gson.toJson(meta));
                 for (Map.Entry<ResourceKey, ResourceNode> entry : resolved.resources().entrySet()) {
                     ResourceKey key = entry.getKey(); ResourceLocation mapped = mapper.map(key);
-                    JsonElement rewritten = rewriter.rewrite(entry.getValue().json(), key.type(), mapper);
-                    write(zip, resourcePath(key.type(), mapped), gson.toJson(rewritten));
+                    // The source dimension is used as the template for the one
+                    // assignment-specific dimension written below. Emitting it
+                    // as well would expose an unintended second dimension.
+                    if (key.type() == ResourceType.DIMENSION) continue;
+                    ResourceNode node = entry.getValue();
+                    if (node.isBinary()) write(zip, resourcePath(key.type(), mapped, true), node.binary());
+                    else {
+                        JsonElement rewritten = rewriter.rewrite(node.json(), key.type(), mapper);
+                        write(zip, resourcePath(key.type(), mapped, false), gson.toJson(rewritten));
+                    }
                 }
                 String dimensionPath = safeWorldPath(assignment.worldName());
                 JsonElement dimension = new DimensionCompiler().create(assignment, resolved.resources(), mapper, rewriter);
@@ -135,12 +143,15 @@ public final class DatapackCompiler {
         return keys.size() > 5 ? shown + " (and " + (keys.size() - 5) + " more)" : shown;
     }
     private static String safeWorldPath(String name) { return WorldNameSanitizer.namespace("world", name).substring("world_".length()); }
-    private static String resourcePath(ResourceType type, ResourceLocation location) {
+    private static String resourcePath(ResourceType type, ResourceLocation location, boolean binary) {
         if (type == ResourceType.UNKNOWN || type.directory().isEmpty()) throw new IllegalArgumentException("Unknown resource cannot be compiled: " + location);
-        return "data/" + location.namespace() + '/' + type.directory() + '/' + location.path() + ".json";
+        return "data/" + location.namespace() + '/' + type.directory() + '/' + location.path() + (binary ? ".nbt" : ".json");
     }
     private static void write(ZipOutputStream zip, String name, String contents) throws IOException {
-        ZipEntry entry = new ZipEntry(name); entry.setTime(0); zip.putNextEntry(entry); zip.write(contents.getBytes(StandardCharsets.UTF_8)); zip.closeEntry();
+        write(zip, name, contents.getBytes(StandardCharsets.UTF_8));
+    }
+    private static void write(ZipOutputStream zip, String name, byte[] contents) throws IOException {
+        ZipEntry entry = new ZipEntry(name); entry.setTime(0); zip.putNextEntry(entry); zip.write(contents); zip.closeEntry();
     }
     private static void atomicReplace(Path source, Path target) throws IOException {
         Files.createDirectories(target.getParent());

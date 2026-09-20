@@ -29,11 +29,15 @@ public final class DatapackScanner {
             if (!metadata.supports(PackVersion.MINECRAFT_1_21_11))
                 errors.add("Unsupported pack format range " + metadata.formatDisplay() + "; Paper 1.21.11 requires 94.1");
             for (String name : zip.names()) {
-                if (!name.startsWith("data/") || (!name.endsWith(".json") && !name.endsWith(".mcfunction"))) continue;
+                if (!name.startsWith("data/") || (!name.endsWith(".json") && !name.endsWith(".mcfunction") && !name.endsWith(".nbt"))) continue;
                 ParsedPath parsed = parsePath(name);
                 if (parsed == null) continue;
                 namespaces.add(parsed.key.location().namespace());
                 try {
+                    if (name.endsWith(".nbt")) {
+                        resources.add(new ResourceNode(parsed.key, null, Path.of(name), List.of(), id, zip.read(name)));
+                        continue;
+                    }
                     String contents = new String(zip.read(name), StandardCharsets.UTF_8);
                     JsonElement json = name.endsWith(".json") ? JsonParser.parseString(contents) : new JsonPrimitive(contents);
                     ReferenceScanner.ScanResult refs = referenceScanner.scan(parsed.key, json);
@@ -114,7 +118,7 @@ public final class DatapackScanner {
         if (parts.length < 4) return null;
         String namespace = parts[1];
         String relative = String.join("/", Arrays.copyOfRange(parts, 2, parts.length));
-        int suffix = relative.endsWith(".mcfunction") ? 11 : relative.endsWith(".json") ? 5 : -1;
+        int suffix = relative.endsWith(".mcfunction") ? 11 : relative.endsWith(".json") ? 5 : relative.endsWith(".nbt") ? 4 : -1;
         if (suffix < 0) return null;
         relative = relative.substring(0, relative.length() - suffix);
         ResourceType.Match match = ResourceType.match(relative);

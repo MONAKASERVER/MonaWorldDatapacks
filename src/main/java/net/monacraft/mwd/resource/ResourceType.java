@@ -21,9 +21,13 @@ public enum ResourceType {
     FLAT_LEVEL_GENERATOR_PRESET("worldgen/flat_level_generator_preset", ScopeClass.WORLDGEN_SCOPABLE),
     WORLD_PRESET("worldgen/world_preset", ScopeClass.WORLDGEN_SCOPABLE),
     TIMELINE("timeline", ScopeClass.WORLDGEN_SCOPABLE),
+    BIOME_TAG("tags/worldgen/biome", ScopeClass.WORLDGEN_SCOPABLE),
+    BLOCK_TAG("tags/block", ScopeClass.WORLDGEN_SCOPABLE),
+    ITEM_TAG("tags/item", ScopeClass.WORLDGEN_SCOPABLE),
+    STRUCTURE_TEMPLATE("structure", ScopeClass.WORLDGEN_SCOPABLE),
     TAG("tags", ScopeClass.RUNTIME_SCOPABLE),
     FUNCTION("function", ScopeClass.SERVER_GLOBAL),
-    PREDICATE("predicate", ScopeClass.RUNTIME_SCOPABLE),
+    PREDICATE("predicate", ScopeClass.WORLDGEN_SCOPABLE),
     LOOT_TABLE("loot_table", ScopeClass.RUNTIME_SCOPABLE),
     ADVANCEMENT("advancement", ScopeClass.SERVER_GLOBAL),
     RECIPE("recipe", ScopeClass.SERVER_GLOBAL),
@@ -41,7 +45,8 @@ public enum ResourceType {
     static {
         for (ResourceType type : values()) if (!type.directory.isEmpty()) PATHS.put(type.directory, type);
         Map.ofEntries(
-                Map.entry("tag", TAG),
+                Map.entry("tag", TAG), Map.entry("tag/worldgen/biome", BIOME_TAG),
+                Map.entry("tag/block", BLOCK_TAG), Map.entry("tag/item", ITEM_TAG),
                 Map.entry("functions", FUNCTION), Map.entry("predicates", PREDICATE),
                 Map.entry("loot_tables", LOOT_TABLE), Map.entry("advancements", ADVANCEMENT),
                 Map.entry("recipes", RECIPE), Map.entry("item_modifiers", ITEM_MODIFIER),
@@ -60,6 +65,7 @@ public enum ResourceType {
     public String directory() { return directory; }
     public ScopeClass scope() { return scope; }
     public boolean worldgen() { return scope == ScopeClass.WORLDGEN_SCOPABLE; }
+    public boolean tag() { return this == TAG || this == BIOME_TAG || this == BLOCK_TAG || this == ITEM_TAG; }
 
     public static Match match(String relative) {
         return PATHS.entrySet().stream().sorted(Comparator.comparingInt((Map.Entry<String, ResourceType> e) -> e.getKey().length()).reversed())

@@ -12,7 +12,7 @@ public final class ReferenceScanner {
             "start_pool", "fallback", "processor_list", "processors", "template_pool",
             "structure", "structures", "preferred_biomes", "spawn_overrides",
             "carvers", "effects", "sound", "particle", "block", "fluid", "timeline", "timelines",
-            "predicate", "conditions", "function", "functions", "loot_table", "name"
+            "predicate", "conditions", "function", "functions", "loot_table"
     );
 
     public ScanResult scan(ResourceKey source, JsonElement root) {
@@ -27,7 +27,7 @@ public final class ReferenceScanner {
         if (element.isJsonObject()) {
             for (Map.Entry<String, JsonElement> entry : element.getAsJsonObject().entrySet()) {
                 String childPath = path + '.' + entry.getKey();
-                boolean values = source.type() == ResourceType.TAG && "values".equals(entry.getKey());
+                boolean values = source.type().tag() && "values".equals(entry.getKey());
                 visit(source, entry.getValue(), childPath, entry.getKey(), values, known, unknown);
             }
         } else if (element.isJsonArray()) {

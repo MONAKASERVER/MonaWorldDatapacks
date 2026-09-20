@@ -23,7 +23,7 @@ public record CompatibilityReport(
 
     public List<ResourceKey> unsafeScopedUnknownResources() {
         return unknownResources.stream()
-                .filter(CompatibilityReport::looksLikeWorldgenResource)
+                .filter(CompatibilityReport::isUnsafeUnknownResource)
                 .toList();
     }
 
@@ -31,10 +31,17 @@ public record CompatibilityReport(
         return safeForScopedCompilation();
     }
 
-    private static boolean looksLikeWorldgenResource(ResourceKey key) {
+    public static boolean isUnsafeUnknownResource(ResourceKey key) {
+        if (isConventionWorldgenMetadata(key)) return false;
         String path = key.location().path();
         return path.equals("worldgen") || path.startsWith("worldgen/")
                 || path.equals("dimension") || path.startsWith("dimension/")
                 || path.equals("dimension_type") || path.startsWith("dimension_type/");
+    }
+
+    private static boolean isConventionWorldgenMetadata(ResourceKey key) {
+        if (!key.location().namespace().equals("c")) return false;
+        return key.location().path().equals("worldgen/biome_colors")
+                || key.location().path().equals("worldgen/structure_icons");
     }
 }

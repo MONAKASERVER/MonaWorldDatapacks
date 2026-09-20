@@ -34,7 +34,7 @@ Paperのexperimentalな[Datapack Discovery API](https://docs.papermc.io/paper/de
 ## インストール
 
 1. Paper 1.21.11とMultiverse-Core 5.xを用意する。
-2. `MonaWorldDatapacks-1.0.3.jar`を`plugins/`へ置く。
+2. `MonaWorldDatapacks-1.0.4.jar`を`plugins/`へ置く。
 3. 一度起動して`plugins/MonaWorldDatapacks/`を生成する。
 4. 停止後、元データパックZIPを`packs/`へ置く。
 5. `worlds.yml`へ割り当てを記述する。
@@ -106,7 +106,7 @@ safety:
 
 ## Compatibility分類
 
-- `WORLDGEN_SCOPABLE`: 専用namespaceへclone可能なDimension/worldgen registry。
+- `WORLDGEN_SCOPABLE`: 専用namespaceへclone可能なDimension/worldgen registry、建造物NBT、worldgen biome tag、worldgenから参照されるblock/item tag・predicate。
 - `RUNTIME_SCOPABLE`: 条件付きで扱えるが意味上の完全分離を保証できない要素。
 - `SERVER_GLOBAL`: recipe、advancement、function等。自動では含めない。
 - `UNKNOWN`: schemaを推測せず、strict modeでは拒否。
@@ -117,6 +117,8 @@ JSON内の文字列を一括置換しません。既知のregistry schema field�
 新しいworldgen schema fieldにある参照も、値が今回cloneするworldgenリソースと完全一致するときだけ追跡して書き換えます。単なるブロック・効果音IDや説明文はmapperに対象がない限り変更しません。未知参照候補はreportへ残しますが、それだけを理由にコンパイルを拒否しません。
 
 `reject-global-registry-overrides: true`は、server-globalリソースを生成ZIPへ混入させないための安全方針です。元ZIPにserver-globalリソースが含まれること自体はエラーではありません。コンパイル成功メッセージと`mwd-manifest.json`に除外件数を記録します。元パックはglobal enableされないため、除外されたレシピ・進捗・function等は対象ワールドでも動作しません。
+
+Incendium 5.4.12の`data/c/worldgen/biome_colors.json`と`structure_icons.json`は地形生成registryではなく、表示色・アイコン用のConventionメタデータとして認識し、生成ZIPから除外します。この2ファイル以外の未知worldgen resourceを一括許可することはありません。`data/*/structure/*.nbt`は建造物生成に必要なため、worldgen biome tagとともに専用namespaceへcloneします。
 
 ## コマンド
 
@@ -211,7 +213,7 @@ Windows:
 .\gradlew.bat clean build
 ```
 
-成果物: `build/libs/MonaWorldDatapacks-1.0.3.jar`
+成果物: `build/libs/MonaWorldDatapacks-1.0.4.jar`
 
 `resource_nether`と`resource_end`は設定例であり、固定されたワールド名ではありません。たとえば次のように任意名を割り当てられます。
 

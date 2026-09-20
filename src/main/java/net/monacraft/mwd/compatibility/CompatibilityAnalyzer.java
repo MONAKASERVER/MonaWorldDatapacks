@@ -19,10 +19,13 @@ public final class CompatibilityAnalyzer {
                 problems.add("Missing reference: " + missing.source() + " " + missing.jsonPath() + " -> " + missing.target());
         }
         for (List<ResourceKey> cycle : graph.cycles()) {
-            if (cycle.stream().anyMatch(key -> key.type().worldgen()))
+            // The untyped JSON reference graph can resolve e.g. a placed
+            // feature to a configured feature with the same location as
+            // itself. Those two-entry self paths are not actual recursion.
+            if (!isApparentSelfReference(cycle) && cycle.stream().anyMatch(key -> key.type().worldgen()))
                 problems.add("Reference cycle: " + cycle);
         }
-        boolean unsafeUnknown = unknown.stream().anyMatch(CompatibilityAnalyzer::looksLikeWorldgenResource);
+        boolean unsafeUnknown = unknown.stream().anyMatch(CompatibilityReport::isUnsafeUnknownResource);
         CompatibilityLevel level;
         if (!problems.isEmpty() || unsafeUnknown) level = CompatibilityLevel.UNSUPPORTED;
         else if (counts.getOrDefault(ScopeClass.SERVER_GLOBAL, 0) > 0) level = CompatibilityLevel.REQUIRES_GLOBAL_RESOURCES;
@@ -33,10 +36,8 @@ public final class CompatibilityAnalyzer {
                 List.copyOf(unknown), List.copyOf(unknownRefs));
     }
 
-    private static boolean looksLikeWorldgenResource(ResourceKey key) {
-        String path = key.location().path();
-        return path.equals("worldgen") || path.startsWith("worldgen/")
-                || path.equals("dimension") || path.startsWith("dimension/")
-                || path.equals("dimension_type") || path.startsWith("dimension_type/");
+    private static boolean isApparentSelfReference(List<ResourceKey> cycle) {
+        return cycle.size() == 2 && cycle.getFirst().equals(cycle.getLast());
     }
+
 }

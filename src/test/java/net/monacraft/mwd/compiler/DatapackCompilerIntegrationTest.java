@@ -22,6 +22,10 @@ class DatapackCompilerIntegrationTest {
             write(out, "pack.mcmeta", "{\"pack\":{\"min_format\":[94,1],\"max_format\":[94,1],\"description\":\"fixture\"}}");
             write(out, "data/minecraft/worldgen/noise_settings/nether.json", "{\"final_density\":\"incendium:terrain/lower\"}");
             write(out, "data/incendium/worldgen/density_function/terrain/lower.json", "{\"type\":\"minecraft:constant\",\"argument\":0.0}");
+            write(out, "data/incendium/worldgen/structure/castle.json", "{\"type\":\"minecraft:jigsaw\",\"biomes\":\"#incendium:structure/has_castle\"}");
+            write(out, "data/incendium/tags/worldgen/biome/structure/has_castle.json", "{\"values\":[\"minecraft:nether_wastes\"]}");
+            write(out, "data/incendium/worldgen/template_pool/castle/start.json", "{\"fallback\":\"minecraft:empty\",\"elements\":[{\"weight\":1,\"element\":{\"element_type\":\"minecraft:single_pool_element\",\"location\":\"incendium:castle/start\",\"processors\":\"minecraft:empty\",\"projection\":\"rigid\"}}]}");
+            write(out, "data/incendium/structure/castle/start.nbt", new byte[] { 10, 0, 0, 0 });
         }
         PluginConfiguration config = new PluginConfiguration(false, true, "ZIP", "mwd", ZipLimits.defaults(), true, true, true, true, false, true, true);
         DatapackManager manager = new DatapackManager(data, config.zipLimits());
@@ -31,10 +35,19 @@ class DatapackCompilerIntegrationTest {
         assertThat(result.success()).as(String.join("; ", result.messages())).isTrue();
         try (ZipFile zip = new ZipFile(result.output().toFile())) {
             assertThat(zip.getEntry("data/mwd_test_nether/worldgen/noise_settings/nether.json")).isNotNull();
+            assertThat(zip.getEntry("data/mwd_test_nether/tags/worldgen/biome/structure/has_castle.json")).isNotNull();
+            assertThat(zip.getEntry("data/mwd_test_nether/structure/castle/start.nbt")).isNotNull();
             assertThat(zip.getEntry("data/mwd_test_nether/dimension/test_nether.json")).isNotNull();
+            assertThat(zip.getEntry("data/mwd_test_nether/dimension/the_nether.json")).isNull();
             assertThat(zip.getEntry("data/minecraft/worldgen/noise_settings/nether.json")).isNull();
             String noise = new String(zip.getInputStream(zip.getEntry("data/mwd_test_nether/worldgen/noise_settings/nether.json")).readAllBytes());
             assertThat(noise).contains("mwd_test_nether:terrain/lower").doesNotContain("incendium:terrain/lower");
+            String structure = new String(zip.getInputStream(zip.getEntry("data/mwd_test_nether/worldgen/structure/castle.json")).readAllBytes());
+            assertThat(structure).contains("#mwd_test_nether:structure/has_castle");
+            String pool = new String(zip.getInputStream(zip.getEntry("data/mwd_test_nether/worldgen/template_pool/castle/start.json")).readAllBytes());
+            assertThat(pool).contains("mwd_test_nether:castle/start").doesNotContain("incendium:castle/start");
+            assertThat(zip.getInputStream(zip.getEntry("data/mwd_test_nether/structure/castle/start.nbt")).readAllBytes())
+                    .containsExactly(10, 0, 0, 0);
             String meta = new String(zip.getInputStream(zip.getEntry("pack.mcmeta")).readAllBytes());
             assertThat(meta).contains("min_format", "94", "1");
         }
@@ -50,6 +63,8 @@ class DatapackCompilerIntegrationTest {
             write(out, "data/fixture/recipe/example.json", "{\"type\":\"minecraft:crafting_shapeless\",\"ingredients\":[\"minecraft:stone\"],\"result\":{\"id\":\"minecraft:diamond\"}}");
             write(out, "data/fixture/function/load.mcfunction", "say this must not become global");
             write(out, "data/fixture/future_global_registry/example.json", "{\"value\":\"fixture:anything\"}");
+            write(out, "data/c/worldgen/biome_colors.json", "{\"fixture:biome\":{\"r\":1,\"g\":2,\"b\":3,\"name\":\"Fixture\"}}");
+            write(out, "data/c/worldgen/structure_icons.json", "{\"fixture:structure\":{\"item\":\"minecraft:stone\"}}");
         }
         PluginConfiguration config = new PluginConfiguration(false, true, "ZIP", "mwd", ZipLimits.defaults(), true, true, true, true, false, true, true);
         DatapackManager manager = new DatapackManager(data, config.zipLimits());
@@ -60,15 +75,17 @@ class DatapackCompilerIntegrationTest {
 
         assertThat(result.success()).as(String.join("; ", result.messages())).isTrue();
         assertThat(result.messages()).anyMatch(message -> message.contains("Omitted 2 server-global resource(s)"));
-        assertThat(result.messages()).anyMatch(message -> message.contains("Omitted 1 non-worldgen unknown resource(s)"));
+        assertThat(result.messages()).anyMatch(message -> message.contains("Omitted 3 non-worldgen unknown resource(s)"));
         try (ZipFile zip = new ZipFile(result.output().toFile())) {
             assertThat(zip.getEntry("data/fixture/recipe/example.json")).isNull();
             assertThat(zip.getEntry("data/fixture/function/load.mcfunction")).isNull();
             assertThat(zip.getEntry("data/fixture/future_global_registry/example.json")).isNull();
+            assertThat(zip.getEntry("data/c/worldgen/biome_colors.json")).isNull();
+            assertThat(zip.getEntry("data/c/worldgen/structure_icons.json")).isNull();
             String noise = new String(zip.getInputStream(zip.getEntry("data/mwd_test_nether/worldgen/noise_settings/nether.json")).readAllBytes());
             assertThat(noise).contains("\"future_density_field\": \"mwd_test_nether:terrain/lower\"");
             String manifest = new String(zip.getInputStream(zip.getEntry("mwd-manifest.json")).readAllBytes());
-            assertThat(manifest).contains("\"omitted_server_global_resources\": 2", "\"omitted_unknown_resources\": 1");
+            assertThat(manifest).contains("\"omitted_server_global_resources\": 2", "\"omitted_unknown_resources\": 3");
         }
     }
 
@@ -92,6 +109,9 @@ class DatapackCompilerIntegrationTest {
                 && message.contains("worldgen/future_registry/example"));
     }
     private static void write(ZipOutputStream out, String name, String value) throws IOException {
-        out.putNextEntry(new ZipEntry(name)); out.write(value.getBytes()); out.closeEntry();
+        write(out, name, value.getBytes());
+    }
+    private static void write(ZipOutputStream out, String name, byte[] value) throws IOException {
+        out.putNextEntry(new ZipEntry(name)); out.write(value); out.closeEntry();
     }
 }
