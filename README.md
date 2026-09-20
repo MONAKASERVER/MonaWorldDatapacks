@@ -34,7 +34,7 @@ Paperのexperimentalな[Datapack Discovery API](https://docs.papermc.io/paper/de
 ## インストール
 
 1. Paper 1.21.11とMultiverse-Core 5.xを用意する。
-2. `MonaWorldDatapacks-1.0.5.jar`を`plugins/`へ置く。
+2. `MonaWorldDatapacks-1.0.6.jar`を`plugins/`へ置く。
 3. 一度起動して`plugins/MonaWorldDatapacks/`を生成する。
 4. 停止後、元データパックZIPを`packs/`へ置く。
 5. `worlds.yml`へ割り当てを記述する。
@@ -104,9 +104,11 @@ safety:
 
 プラグインがworldを削除する機能はありません。
 
+custom dimensionはBukkitの通常環境ではなくnamespaced world keyで作られるため、`/mv regen`では再生成できません（`Illegal dimension (CUSTOM)`）。再生成する場合は、バックアップ後に`/mv remove <Multiverse上のworld名>`で登録を外し、サーバー停止中に対象world folderを削除してから起動してください。起動時にdatapack dimensionが読み込まれ、Multiverseへ再登録されます。
+
 ## Compatibility分類
 
-- `WORLDGEN_SCOPABLE`: 専用namespaceへclone可能なDimension/worldgen registry、建造物NBT、worldgen biome tag、worldgenから参照されるblock/item tag・predicate。
+- `WORLDGEN_SCOPABLE`: 専用namespaceへclone可能なDimension/worldgen registry、建造物NBT、worldgen biome tag、worldgenから参照されるblock/item tag・predicate・loot table。
 - `RUNTIME_SCOPABLE`: 条件付きで扱えるが意味上の完全分離を保証できない要素。
 - `SERVER_GLOBAL`: recipe、advancement、function等。自動では含めない。
 - `UNKNOWN`: schemaを推測せず、strict modeでは拒否。
@@ -118,7 +120,7 @@ JSON内の文字列を一括置換しません。既知のregistry schema field�
 
 `reject-global-registry-overrides: true`は、server-globalリソースを生成ZIPへ混入させないための安全方針です。元ZIPにserver-globalリソースが含まれること自体はエラーではありません。コンパイル成功メッセージと`mwd-manifest.json`に除外件数を記録します。元パックはglobal enableされないため、除外されたレシピ・進捗・function等は対象ワールドでも動作しません。
 
-Incendium 5.4.12の`data/c/worldgen/biome_colors.json`と`structure_icons.json`は地形生成registryではなく、表示色・アイコン用のConventionメタデータとして認識し、生成ZIPから除外します。この2ファイル以外の未知worldgen resourceを一括許可することはありません。`data/*/structure/*.nbt`は建造物生成に必要なため、worldgen biome tagとともに専用namespaceへcloneし、NBT内のジグソーブロックが持つ`pool`参照も変換します。
+Incendium 5.4.12の`data/c/worldgen/biome_colors.json`と`structure_icons.json`は地形生成registryではなく、表示色・アイコン用のConventionメタデータとして認識し、生成ZIPから除外します。この2ファイル以外の未知worldgen resourceを一括許可することはありません。`data/*/structure/*.nbt`は建造物生成に必要なため、worldgen biome tagとともに専用namespaceへcloneし、NBT内のジグソーブロックが持つ`pool`参照とコンテナ・Mobのloot table参照も変換します。構造物が参照するloot tableは、関連item tag・predicateとともに割り当て先namespaceへcloneします。
 
 ## コマンド
 
@@ -163,7 +165,7 @@ Incendium 5.4.12の`data/c/worldgen/biome_colors.json`と`structure_icons.json`�
 | 既知worldgen JSONのnamespace分離 | SUPPORTED | synthetic integration test済み |
 | Vanilla Nether + Incendium風Nether | SUPPORTED（コンパイラ） | 実Incendiumの版ごとに`/mwd scan`と実サーバーテストが必要 |
 | Vanilla End + Stellarity風End | SUPPORTED（コンパイラ） | 同上 |
-| real Incendium/Stellarityのruntime機能 | PARTIAL | function/loot等は除外。worldgen部分のみコンパイル |
+| real Incendium/Stellarityのruntime機能 | PARTIAL | 構造物lootは対応。function等は除外し、worldgen部分をコンパイル |
 | recipe/advancement/enchantment/damage type | UNSUPPORTED per-world | Minecraftのserver-global registry |
 | load/tick function | UNSUPPORTED in strict | selectorや副作用をDimensionへ完全拘束できない |
 | 未知registry/schema | UNSUPPORTED in strict | 推測変換しない |
@@ -213,7 +215,7 @@ Windows:
 .\gradlew.bat clean build
 ```
 
-成果物: `build/libs/MonaWorldDatapacks-1.0.5.jar`
+成果物: `build/libs/MonaWorldDatapacks-1.0.6.jar`
 
 `resource_nether`と`resource_end`は設定例であり、固定されたワールド名ではありません。たとえば次のように任意名を割り当てられます。
 

@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.zip.*;
 
 public final class DatapackCompiler {
-    public static final String TRANSFORM_VERSION = "13";
+    public static final String TRANSFORM_VERSION = "14";
     private final Path dataDirectory;
     private final PluginConfiguration config;
     private final DatapackManager manager;

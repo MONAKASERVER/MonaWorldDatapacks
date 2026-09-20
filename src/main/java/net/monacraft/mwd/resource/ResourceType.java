@@ -28,7 +28,9 @@ public enum ResourceType {
     TAG("tags", ScopeClass.RUNTIME_SCOPABLE),
     FUNCTION("function", ScopeClass.SERVER_GLOBAL),
     PREDICATE("predicate", ScopeClass.WORLDGEN_SCOPABLE),
-    LOOT_TABLE("loot_table", ScopeClass.RUNTIME_SCOPABLE),
+    // Loot tables referenced by structure NBT are cloned under the assignment
+    // namespace, so they do not override the source pack's global identifiers.
+    LOOT_TABLE("loot_table", ScopeClass.WORLDGEN_SCOPABLE),
     ADVANCEMENT("advancement", ScopeClass.SERVER_GLOBAL),
     RECIPE("recipe", ScopeClass.SERVER_GLOBAL),
     ITEM_MODIFIER("item_modifier", ScopeClass.SERVER_GLOBAL),

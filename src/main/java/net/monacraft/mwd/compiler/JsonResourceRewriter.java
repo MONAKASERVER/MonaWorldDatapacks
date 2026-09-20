@@ -51,8 +51,12 @@ public final class JsonResourceRewriter {
         String raw = element.getAsString();
         boolean tag = raw.startsWith("#");
         if (tagValues) {
-            if (tag) return rewriteLocation(element, true, mapper);
-            if (ownerType == ResourceType.BIOME_TAG) return rewriteLocation(element, false, mapper);
+            if (tag) {
+                if (Set.of(ResourceType.BIOME_TAG, ResourceType.BLOCK_TAG, ResourceType.ITEM_TAG).contains(ownerType))
+                    return rewriteLocation(element, ownerType, true, mapper);
+                return rewriteLocation(element, true, mapper);
+            }
+            if (ownerType == ResourceType.BIOME_TAG) return rewriteLocation(element, ResourceType.BIOME, false, mapper);
             return element;
         }
         if ("type".equals(field) || NON_WORLDGEN_REFERENCE_FIELDS.contains(field)) return element;
@@ -107,6 +111,18 @@ public final class JsonResourceRewriter {
         if (ownerType == ResourceType.TEMPLATE_POOL && "location".equals(field)) return ResourceType.STRUCTURE_TEMPLATE;
         if (ownerType == ResourceType.TEMPLATE_POOL && "feature".equals(field)) return ResourceType.PLACED_FEATURE;
         if (ownerType == ResourceType.PROCESSOR_LIST && "predicate_type".equals(field)) return ResourceType.PREDICATE;
+        if (ownerType == ResourceType.LOOT_TABLE && "loot_table".equals(field)) return ResourceType.LOOT_TABLE;
+        if (ownerType == ResourceType.LOOT_TABLE && "value".equals(field)
+                && hasDiscriminator(container, "type", "minecraft:loot_table")) return ResourceType.LOOT_TABLE;
+        if (ownerType == ResourceType.LOOT_TABLE && "name".equals(field)
+                && hasDiscriminator(container, "type", "minecraft:tag")) return ResourceType.ITEM_TAG;
+        if (ownerType == ResourceType.LOOT_TABLE && "name".equals(field)
+                && hasDiscriminator(container, "condition", "minecraft:reference")) return ResourceType.PREDICATE;
         return null;
+    }
+
+    private static boolean hasDiscriminator(JsonObject object, String field, String value) {
+        return object != null && object.has(field) && object.get(field).isJsonPrimitive()
+                && value.equals(object.get(field).getAsString());
     }
 }

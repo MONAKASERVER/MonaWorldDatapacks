@@ -38,10 +38,15 @@ public final class NbtStructureRewriter {
             for (BinaryTag value : list) values.add(rewriteTag(value, field, mapper));
             return ListBinaryTag.from(values);
         }
-        if (tag instanceof StringBinaryTag string && "pool".equals(field)) {
+        ResourceType expected = switch (field == null ? "" : field) {
+            case "pool" -> ResourceType.TEMPLATE_POOL;
+            case "LootTable", "DeathLootTable" -> ResourceType.LOOT_TABLE;
+            default -> null;
+        };
+        if (tag instanceof StringBinaryTag string && expected != null) {
             Optional<ResourceLocation> parsed = ResourceLocation.tryParse(string.value());
             if (parsed.isPresent()) {
-                ResourceLocation mapped = mapper.mapReference(ResourceType.TEMPLATE_POOL, parsed.get());
+                ResourceLocation mapped = mapper.mapReference(expected, parsed.get());
                 if (!mapped.equals(parsed.get())) return StringBinaryTag.stringBinaryTag(mapped.toString());
             }
         }

@@ -26,7 +26,10 @@ class DatapackCompilerIntegrationTest {
             write(out, "data/incendium/worldgen/structure/castle.json", "{\"type\":\"minecraft:jigsaw\",\"biomes\":\"#incendium:structure/has_castle\"}");
             write(out, "data/incendium/tags/worldgen/biome/structure/has_castle.json", "{\"values\":[\"minecraft:nether_wastes\"]}");
             write(out, "data/incendium/worldgen/template_pool/castle/start.json", "{\"fallback\":\"minecraft:empty\",\"elements\":[{\"weight\":1,\"element\":{\"element_type\":\"minecraft:single_pool_element\",\"location\":\"incendium:castle/start\",\"processors\":\"minecraft:empty\",\"projection\":\"rigid\"}}]}");
-            write(out, "data/incendium/structure/castle/start.nbt", structureNbt("incendium:castle/start"));
+            write(out, "data/incendium/loot_table/castle/chest.json", "{\"pools\":[{\"rolls\":1,\"entries\":[{\"type\":\"minecraft:loot_table\",\"value\":\"incendium:castle/base\"},{\"type\":\"minecraft:tag\",\"name\":\"incendium:treasure\",\"expand\":true}]}]}");
+            write(out, "data/incendium/loot_table/castle/base.json", "{\"pools\":[]}");
+            write(out, "data/incendium/tags/item/treasure.json", "{\"values\":[\"minecraft:gold_ingot\"]}");
+            write(out, "data/incendium/structure/castle/start.nbt", structureNbt("incendium:castle/start", "incendium:castle/chest"));
         }
         PluginConfiguration config = new PluginConfiguration(false, true, "ZIP", "mwd", ZipLimits.defaults(), true, true, true, true, false, true, true);
         DatapackManager manager = new DatapackManager(data, config.zipLimits());
@@ -38,6 +41,9 @@ class DatapackCompilerIntegrationTest {
             assertThat(zip.getEntry("data/mwd_test_nether/worldgen/noise_settings/nether.json")).isNotNull();
             assertThat(zip.getEntry("data/mwd_test_nether/tags/worldgen/biome/structure/has_castle.json")).isNotNull();
             assertThat(zip.getEntry("data/mwd_test_nether/structure/castle/start.nbt")).isNotNull();
+            assertThat(zip.getEntry("data/mwd_test_nether/loot_table/castle/chest.json")).isNotNull();
+            assertThat(zip.getEntry("data/mwd_test_nether/loot_table/castle/base.json")).isNotNull();
+            assertThat(zip.getEntry("data/mwd_test_nether/tags/item/treasure.json")).isNotNull();
             assertThat(zip.getEntry("data/mwd_test_nether/dimension/test_nether.json")).isNotNull();
             assertThat(zip.getEntry("data/mwd_test_nether/dimension/the_nether.json")).isNull();
             assertThat(zip.getEntry("data/minecraft/worldgen/noise_settings/nether.json")).isNull();
@@ -52,7 +58,12 @@ class DatapackCompilerIntegrationTest {
                 CompoundBinaryTag structureNbt = BinaryTagIO.readCompressedInputStream(input);
                 assertThat(structureNbt.getCompound("block").getString("pool"))
                         .isEqualTo("mwd_test_nether:castle/start");
+                assertThat(structureNbt.getCompound("block").getString("LootTable"))
+                        .isEqualTo("mwd_test_nether:castle/chest");
             }
+            String loot = new String(zip.getInputStream(zip.getEntry("data/mwd_test_nether/loot_table/castle/chest.json")).readAllBytes());
+            assertThat(loot).contains("mwd_test_nether:castle/base", "mwd_test_nether:treasure")
+                    .doesNotContain("incendium:castle/base", "incendium:treasure");
             String meta = new String(zip.getInputStream(zip.getEntry("pack.mcmeta")).readAllBytes());
             assertThat(meta).contains("min_format", "94", "1");
         }
@@ -119,8 +130,9 @@ class DatapackCompilerIntegrationTest {
     private static void write(ZipOutputStream out, String name, byte[] value) throws IOException {
         out.putNextEntry(new ZipEntry(name)); out.write(value); out.closeEntry();
     }
-    private static byte[] structureNbt(String pool) throws IOException {
-        CompoundBinaryTag block = CompoundBinaryTag.builder().putString("pool", pool).build();
+    private static byte[] structureNbt(String pool, String lootTable) throws IOException {
+        CompoundBinaryTag block = CompoundBinaryTag.builder()
+                .putString("pool", pool).putString("LootTable", lootTable).build();
         CompoundBinaryTag root = CompoundBinaryTag.builder().put("block", block).build();
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         BinaryTagIO.writeCompressedOutputStream(root, output);
