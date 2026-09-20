@@ -18,6 +18,8 @@ public enum ResourceType {
     TEMPLATE_POOL("worldgen/template_pool", ScopeClass.WORLDGEN_SCOPABLE),
     PROCESSOR_LIST("worldgen/processor_list", ScopeClass.WORLDGEN_SCOPABLE),
     MULTI_NOISE_PARAMETER_LIST("worldgen/multi_noise_biome_source_parameter_list", ScopeClass.WORLDGEN_SCOPABLE),
+    FLAT_LEVEL_GENERATOR_PRESET("worldgen/flat_level_generator_preset", ScopeClass.WORLDGEN_SCOPABLE),
+    WORLD_PRESET("worldgen/world_preset", ScopeClass.WORLDGEN_SCOPABLE),
     TIMELINE("timeline", ScopeClass.WORLDGEN_SCOPABLE),
     TAG("tags", ScopeClass.RUNTIME_SCOPABLE),
     FUNCTION("function", ScopeClass.SERVER_GLOBAL),

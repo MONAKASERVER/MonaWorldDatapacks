@@ -18,8 +18,7 @@ public record CompatibilityReport(
      * generated pack unsafe by themselves.
      */
     public boolean safeForScopedCompilation() {
-        return problems.isEmpty() && unsafeScopedUnknownResources().isEmpty()
-                && unknownReferences.isEmpty();
+        return problems.isEmpty() && unsafeScopedUnknownResources().isEmpty();
     }
 
     public List<ResourceKey> unsafeScopedUnknownResources() {

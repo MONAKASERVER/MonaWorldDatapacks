@@ -13,6 +13,9 @@ public final class JsonResourceRewriter {
             "start_pool", "fallback", "processor_list", "processors", "template_pool", "structure", "structures",
             "preferred_biomes", "carvers", "timeline", "timelines", "predicate", "conditions", "function", "functions", "loot_table", "name"
     );
+    private static final Set<String> TEXT_FIELDS = Set.of(
+            "description", "translation_key", "text", "message", "title", "subtitle"
+    );
 
     public JsonElement rewrite(JsonElement input, ResourceType ownerType, NamespaceMapper mapper) {
         JsonElement copy = input.deepCopy();
@@ -45,13 +48,19 @@ public final class JsonResourceRewriter {
 
     private JsonElement rewritePrimitive(JsonElement element, String field, boolean tagValues, NamespaceMapper mapper) {
         if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) return element;
-        if (!tagValues && !FIELDS.contains(field)) return element;
+        if (!tagValues && TEXT_FIELDS.contains(field)) return element;
         String raw = element.getAsString();
         boolean tag = raw.startsWith("#");
         String value = tag ? raw.substring(1) : raw;
         Optional<ResourceLocation> parsed = ResourceLocation.tryParse(value);
         if (parsed.isEmpty()) return element;
         ResourceLocation mapped = mapper.mapReference(parsed.get());
+        // Known schema fields are rewritten as before. For newer worldgen
+        // schema fields, rewrite only when the value exactly resolves to a
+        // resource that this compilation is actually cloning. Unrelated
+        // block/sound/etc. identifiers remain unchanged because the mapper
+        // has no entry for them.
+        if (!tagValues && !FIELDS.contains(field) && mapped.equals(parsed.get())) return element;
         return mapped.equals(parsed.get()) ? element : new JsonPrimitive((tag ? "#" : "") + mapped);
     }
 }

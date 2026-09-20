@@ -45,7 +45,7 @@ class DatapackCompilerIntegrationTest {
         Path source = data.resolve("packs/full-pack.zip");
         try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(source))) {
             write(out, "pack.mcmeta", "{\"pack\":{\"min_format\":[94,1],\"max_format\":[94,1],\"description\":\"fixture\"}}");
-            write(out, "data/minecraft/worldgen/noise_settings/nether.json", "{\"final_density\":\"fixture:terrain/lower\"}");
+            write(out, "data/minecraft/worldgen/noise_settings/nether.json", "{\"final_density\":\"fixture:terrain/lower\",\"future_density_field\":\"fixture:terrain/lower\"}");
             write(out, "data/fixture/worldgen/density_function/terrain/lower.json", "{\"type\":\"minecraft:constant\",\"argument\":0.0}");
             write(out, "data/fixture/recipe/example.json", "{\"type\":\"minecraft:crafting_shapeless\",\"ingredients\":[\"minecraft:stone\"],\"result\":{\"id\":\"minecraft:diamond\"}}");
             write(out, "data/fixture/function/load.mcfunction", "say this must not become global");
@@ -65,6 +65,8 @@ class DatapackCompilerIntegrationTest {
             assertThat(zip.getEntry("data/fixture/recipe/example.json")).isNull();
             assertThat(zip.getEntry("data/fixture/function/load.mcfunction")).isNull();
             assertThat(zip.getEntry("data/fixture/future_global_registry/example.json")).isNull();
+            String noise = new String(zip.getInputStream(zip.getEntry("data/mwd_test_nether/worldgen/noise_settings/nether.json")).readAllBytes());
+            assertThat(noise).contains("\"future_density_field\": \"mwd_test_nether:terrain/lower\"");
             String manifest = new String(zip.getInputStream(zip.getEntry("mwd-manifest.json")).readAllBytes());
             assertThat(manifest).contains("\"omitted_server_global_resources\": 2", "\"omitted_unknown_resources\": 1");
         }
@@ -86,7 +88,8 @@ class DatapackCompilerIntegrationTest {
         CompilationResult result = new DatapackCompiler(data, config, manager).compile(assignment);
 
         assertThat(result.success()).isFalse();
-        assertThat(result.messages()).anyMatch(message -> message.contains("unknown worldgen resources/references"));
+        assertThat(result.messages()).anyMatch(message -> message.contains("unknown worldgen resource(s)")
+                && message.contains("worldgen/future_registry/example"));
     }
     private static void write(ZipOutputStream out, String name, String value) throws IOException {
         out.putNextEntry(new ZipEntry(name)); out.write(value.getBytes()); out.closeEntry();

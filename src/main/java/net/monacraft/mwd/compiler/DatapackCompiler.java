@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.zip.*;
 
 public final class DatapackCompiler {
-    public static final String TRANSFORM_VERSION = "2";
+    public static final String TRANSFORM_VERSION = "3";
     private final Path dataDirectory;
     private final PluginConfiguration config;
     private final DatapackManager manager;
@@ -35,9 +35,9 @@ public final class DatapackCompiler {
             DatapackProfile profile = new ProfileRegistry().named(assignment.profile());
             for (PackAssignment pack : assignment.datapacks()) {
                 DatapackAnalysis analysis = manager.scan(pack.id()); analyses.put(pack.id(), analysis);
-                if (config.rejectUnknownResources() && (!analysis.compatibility().unsafeScopedUnknownResources().isEmpty()
-                        || !analysis.compatibility().unknownReferences().isEmpty()))
-                    return CompilationResult.failure(assignment.worldName(), "Safety policy rejects unknown worldgen resources/references in " + pack.id());
+                if (config.rejectUnknownResources() && !analysis.compatibility().unsafeScopedUnknownResources().isEmpty())
+                    return CompilationResult.failure(assignment.worldName(), "Safety policy rejects unknown worldgen resource(s) in "
+                            + pack.id() + ": " + summarize(analysis.compatibility().unsafeScopedUnknownResources()));
                 if (config.strictMode() && !analysis.compatibility().safeForScopedCompilation())
                     return CompilationResult.failure(assignment.worldName(), "Strict mode rejected " + pack.id() + ": " + analysis.compatibility().result() + " " + analysis.compatibility().problems());
             }
@@ -129,6 +129,10 @@ public final class DatapackCompiler {
     }
     private static int count(Map<String, DatapackAnalysis> analyses, net.monacraft.mwd.compatibility.ScopeClass scope) {
         return analyses.values().stream().mapToInt(a -> a.compatibility().counts().getOrDefault(scope, 0)).sum();
+    }
+    private static String summarize(List<ResourceKey> keys) {
+        String shown = keys.stream().limit(5).map(ResourceKey::toString).reduce((a, b) -> a + ", " + b).orElse("unknown");
+        return keys.size() > 5 ? shown + " (and " + (keys.size() - 5) + " more)" : shown;
     }
     private static String safeWorldPath(String name) { return WorldNameSanitizer.namespace("world", name).substring("world_".length()); }
     private static String resourcePath(ResourceType type, ResourceLocation location) {

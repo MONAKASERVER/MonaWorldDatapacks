@@ -12,6 +12,8 @@ class ResourceCoreTest {
         assertThat(ResourceLocation.parse("incendium:terrain/lower")).isEqualTo(new ResourceLocation("incendium", "terrain/lower"));
         assertThat(ResourceLocation.parse("stone").toString()).isEqualTo("minecraft:stone");
         assertThatThrownBy(() -> ResourceLocation.parse("Bad Namespace:path")).isInstanceOf(IllegalArgumentException.class);
+        assertThat(ResourceType.match("worldgen/world_preset/normal").type()).isEqualTo(ResourceType.WORLD_PRESET);
+        assertThat(ResourceType.match("worldgen/flat_level_generator_preset/classic_flat").type()).isEqualTo(ResourceType.FLAT_LEVEL_GENERATOR_PRESET);
     }
 
     @Test void mapsOnlyOwnedResourcesAndRewritesKnownJsonFields() {
@@ -21,6 +23,18 @@ class ResourceCoreTest {
         var output = new JsonResourceRewriter().rewrite(input, ResourceType.DIMENSION, mapper).getAsJsonObject();
         assertThat(output.get("settings").getAsString()).isEqualTo("mwd_test:nether");
         assertThat(output.get("description").getAsString()).isEqualTo("minecraft:nether is cool");
+    }
+
+    @Test void rewritesExistingWorldgenTargetsInNewSchemaFieldsButNotText() {
+        ResourceKey key = new ResourceKey(ResourceType.DENSITY_FUNCTION, new ResourceLocation("fixture", "terrain/new_field"));
+        NamespaceMapper mapper = new NamespaceMapper("mwd_test", List.of(key));
+        var input = JsonParser.parseString("{\"future_density_field\":\"fixture:terrain/new_field\",\"description\":\"fixture:terrain/new_field\",\"block\":\"minecraft:stone\"}");
+
+        var output = new JsonResourceRewriter().rewrite(input, ResourceType.NOISE_SETTINGS, mapper).getAsJsonObject();
+
+        assertThat(output.get("future_density_field").getAsString()).isEqualTo("mwd_test:terrain/new_field");
+        assertThat(output.get("description").getAsString()).isEqualTo("fixture:terrain/new_field");
+        assertThat(output.get("block").getAsString()).isEqualTo("minecraft:stone");
     }
 
     @Test void detectsCyclesAndMissingPackReferences() {
@@ -38,4 +52,3 @@ class ResourceCoreTest {
         return new ResourceNode(key, JsonParser.parseString("{}"), Path.of(key.location().path()), List.of(refs), "fixture");
     }
 }
-

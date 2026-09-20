@@ -34,7 +34,7 @@ Paperのexperimentalな[Datapack Discovery API](https://docs.papermc.io/paper/de
 ## インストール
 
 1. Paper 1.21.11とMultiverse-Core 5.xを用意する。
-2. `MonaWorldDatapacks-1.0.2.jar`を`plugins/`へ置く。
+2. `MonaWorldDatapacks-1.0.3.jar`を`plugins/`へ置く。
 3. 一度起動して`plugins/MonaWorldDatapacks/`を生成する。
 4. 停止後、元データパックZIPを`packs/`へ置く。
 5. `worlds.yml`へ割り当てを記述する。
@@ -112,7 +112,9 @@ safety:
 - `UNKNOWN`: schemaを推測せず、strict modeでは拒否。
 - `UNSUPPORTED`: 壊れたJSON、欠損したpack-owned参照、不正構造など。
 
-JSON内の文字列を一括置換しません。既知のregistry schema fieldとtag valuesだけをResourceLocationとして扱い、説明文などは変更しません。`minecraft:*`は組み込み参照として維持し、元パックが実際にoverrideしたworldgen entryだけをcloneします。
+JSON内の文字列を一括置換しません。既知のregistry schema field、tag values、および今回cloneするworldgenリソースと完全一致する参照だけをResourceLocationとして扱い、説明文などは変更しません。`minecraft:*`は組み込み参照として維持し、元パックが実際にoverrideしたworldgen entryだけをcloneします。
+
+新しいworldgen schema fieldにある参照も、値が今回cloneするworldgenリソースと完全一致するときだけ追跡して書き換えます。単なるブロック・効果音IDや説明文はmapperに対象がない限り変更しません。未知参照候補はreportへ残しますが、それだけを理由にコンパイルを拒否しません。
 
 `reject-global-registry-overrides: true`は、server-globalリソースを生成ZIPへ混入させないための安全方針です。元ZIPにserver-globalリソースが含まれること自体はエラーではありません。コンパイル成功メッセージと`mwd-manifest.json`に除外件数を記録します。元パックはglobal enableされないため、除外されたレシピ・進捗・function等は対象ワールドでも動作しません。
 
@@ -209,7 +211,7 @@ Windows:
 .\gradlew.bat clean build
 ```
 
-成果物: `build/libs/MonaWorldDatapacks-1.0.2.jar`
+成果物: `build/libs/MonaWorldDatapacks-1.0.3.jar`
 
 `resource_nether`と`resource_end`は設定例であり、固定されたワールド名ではありません。たとえば次のように任意名を割り当てられます。
 
