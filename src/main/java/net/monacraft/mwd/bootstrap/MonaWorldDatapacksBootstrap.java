@@ -6,6 +6,7 @@ import net.monacraft.mwd.compiler.*;
 import net.monacraft.mwd.config.*;
 import net.monacraft.mwd.pack.DatapackManager;
 import net.monacraft.mwd.paper.DatapackDiscoveryAdapter;
+import net.monacraft.mwd.regen.RegenerationRequestStore;
 import java.io.IOException;
 import java.util.*;
 
@@ -29,6 +30,10 @@ public final class MonaWorldDatapacksBootstrap implements PluginBootstrap {
                     context.getLogger().error("Assignment was NOT registered; other worlds were not modified: {}", detail);
                 }
             }
+            new RegenerationRequestStore(context.getDataDirectory()).process(results).forEach(outcome -> {
+                if (outcome.success()) context.getLogger().info("Pending regeneration {}: {}", outcome.world(), outcome.detail());
+                else context.getLogger().error("Pending regeneration {} failed and will be retried: {}", outcome.world(), outcome.detail());
+            });
             BootstrapState.set(new BootstrapState(context.getDataDirectory(), bundle, packs,
                     Collections.unmodifiableMap(results), List.copyOf(errors)));
             DatapackDiscoveryAdapter adapter = new DatapackDiscoveryAdapter();

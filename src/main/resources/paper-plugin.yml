@@ -21,6 +21,7 @@ permissions:
       monaworlddatapacks.compile: true
       monaworlddatapacks.assign: true
       monaworlddatapacks.doctor: true
+      monaworlddatapacks.regen: true
   monaworlddatapacks.status:
     default: op
   monaworlddatapacks.scan:
@@ -31,4 +32,5 @@ permissions:
     default: op
   monaworlddatapacks.doctor:
     default: op
-
+  monaworlddatapacks.regen:
+    default: op

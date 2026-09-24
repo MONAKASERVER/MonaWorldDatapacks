@@ -9,6 +9,7 @@ import net.monacraft.mwd.diagnostic.*;
 import net.monacraft.mwd.pack.*;
 import net.monacraft.mwd.plugin.MonaWorldDatapacksPlugin;
 import net.monacraft.mwd.profile.ProfileRegistry;
+import net.monacraft.mwd.regen.RegenerationRequestStore;
 import org.bukkit.command.CommandSender;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -36,6 +37,7 @@ public final class MonaWorldDatapacksCommand implements BasicCommand {
                 case "unassign" -> { require(sender, "monaworlddatapacks.assign"); need(args, 3); unassign(sender, args[1], args[2]); }
                 case "compile" -> { require(sender, "monaworlddatapacks.compile"); async(sender, () -> compile(sender, args.length > 1 ? args[1] : null)); }
                 case "doctor" -> { require(sender, "monaworlddatapacks.doctor"); doctor(sender, args.length > 1 ? args[1] : null); }
+                case "regen" -> { require(sender, "monaworlddatapacks.regen"); need(args, 2); regen(sender, args); }
                 case "reload-config" -> { require(sender, "monaworlddatapacks.admin"); reload(sender); }
                 case "version" -> message(sender, "<gold>MonaWorldDatapacks</gold> <white>" + plugin.getPluginMeta().getVersion() + "</white> / transform " + DatapackCompiler.TRANSFORM_VERSION);
                 default -> help(sender);
@@ -44,10 +46,11 @@ public final class MonaWorldDatapacksCommand implements BasicCommand {
     }
 
     @Override public Collection<String> suggest(CommandSourceStack source, String[] args) {
-        if (args.length <= 1) return filter(List.of("status","packs","worlds","info","scan","assign","unassign","compile","doctor","report","reload-config","version"), args.length == 0 ? "" : args[0]);
+        if (args.length <= 1) return filter(List.of("status","packs","worlds","info","scan","assign","unassign","compile","doctor","regen","report","reload-config","version"), args.length == 0 ? "" : args[0]);
         BootstrapState state = BootstrapState.get();
         String sub = args[0].toLowerCase(Locale.ROOT);
-        if (args.length == 2 && Set.of("info","compile","doctor","assign","unassign").contains(sub)) return filter(state.configuration().worlds().keySet(), args[1]);
+        if (args.length == 2 && Set.of("info","compile","doctor","regen","assign","unassign").contains(sub)) return filter(state.configuration().worlds().keySet(), args[1]);
+        if (sub.equals("regen") && args.length == 3) return filter(List.of("confirm"), args[2]);
         if ((sub.equals("scan") || sub.equals("report") || (args.length == 3 && Set.of("assign","unassign").contains(sub)))) {
             try { return filter(state.packManager().listPackIds(), args[args.length - 1]); } catch (IOException ignored) { return List.of(); }
         }
@@ -130,11 +133,26 @@ public final class MonaWorldDatapacksCommand implements BasicCommand {
             message(sender, "<" + color + ">[" + result.severity() + "]</" + color + "> <white>" + escape(result.check()) + "</white> <gray>" + escape(result.detail()) + "</gray>");
         }
     }
+    private void regen(CommandSender sender, String[] args) throws IOException {
+        String world = args[1];
+        BootstrapState state = BootstrapState.get();
+        WorldAssignment assignment = state.configuration().worlds().get(world);
+        CompilationResult result = state.compilations().get(world);
+        if (assignment == null || !assignment.enabled()) throw new CommandFailure("Unknown or disabled world assignment: " + world);
+        if (result == null || !result.success()) throw new CommandFailure("Assignment is not compiled successfully: " + world);
+        if (args.length < 3 || !args[2].equalsIgnoreCase("confirm")) {
+            message(sender, "<red>生成済みワールドを初期化します。</red> <yellow>実行するには</yellow> <white>/mwd regen " + escape(world) + " confirm</white>");
+            return;
+        }
+        new RegenerationRequestStore(state.dataDirectory()).request(world, result.dimensionKey());
+        message(sender, "<green>安全な再生成を予約しました:</green> <white>" + escape(world) + "</white>");
+        message(sender, "<yellow>サーバーを通常どおり再起動してください。旧ワールドは削除せずバックアップへ退避します。</yellow>");
+    }
     private void reload(CommandSender sender) throws IOException {
         BootstrapState state = BootstrapState.reloadConfiguration();
         message(sender, "<green>設定を再読込しました。</green> <white>割り当て: " + state.configuration().worlds().size() + "</white> <yellow>datapack registryへの実際の反映には再起動が必要です。</yellow>");
     }
-    private void help(CommandSender sender) { message(sender, "<gold>/mwd</gold> <gray>status|packs|worlds|info|scan|assign|unassign|compile|doctor|report|reload-config|version</gray>"); }
+    private void help(CommandSender sender) { message(sender, "<gold>/mwd</gold> <gray>status|packs|worlds|info|scan|assign|unassign|compile|doctor|regen|report|reload-config|version</gray>"); }
     private void async(CommandSender sender, IoAction action) {
         message(sender, "<gray>処理を開始しました…</gray>");
         CompletableFuture.runAsync(() -> { try { action.run(); } catch (IOException | RuntimeException e) { sync(() -> message(sender, "<red>" + escape(e.getClass().getSimpleName() + ": " + e.getMessage()) + "</red>")); } });
