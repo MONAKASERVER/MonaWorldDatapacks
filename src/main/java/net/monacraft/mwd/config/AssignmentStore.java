@@ -38,10 +38,17 @@ public final class AssignmentStore {
         atomicReplace(temp, worldsFile);
     }
     private static Map<String, Object> defaultWorld(String profile) {
-        boolean end = profile != null && profile.equalsIgnoreCase("STELLARITY");
-        Map<String, Object> value = new LinkedHashMap<>(); value.put("enabled", true); value.put("environment", end ? "THE_END" : "NETHER");
-        value.put("profile", profile == null ? "GENERIC" : profile.toUpperCase(Locale.ROOT));
-        value.put("source-dimension", end ? "minecraft:the_end" : "minecraft:the_nether");
+        String normalized = profile == null ? "GENERIC" : profile.toUpperCase(Locale.ROOT);
+        String environment;
+        String sourceDimension;
+        switch (normalized) {
+            case "INCENDIUM" -> { environment = "NETHER"; sourceDimension = "minecraft:the_nether"; }
+            case "STELLARITY" -> { environment = "THE_END"; sourceDimension = "minecraft:the_end"; }
+            default -> { environment = "NORMAL"; sourceDimension = "minecraft:overworld"; }
+        }
+        Map<String, Object> value = new LinkedHashMap<>(); value.put("enabled", true); value.put("environment", environment);
+        value.put("profile", normalized);
+        value.put("source-dimension", sourceDimension);
         value.put("strategy", "SCOPED_WORLDGEN"); value.put("existing-world-policy", "REFUSE"); return value;
     }
     private void backup(Path file) throws IOException {
@@ -57,4 +64,3 @@ public final class AssignmentStore {
         catch (AtomicMoveNotSupportedException e) { Files.move(source, target, StandardCopyOption.REPLACE_EXISTING); }
     }
 }
-

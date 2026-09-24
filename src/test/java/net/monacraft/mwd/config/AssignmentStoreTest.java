@@ -27,4 +27,28 @@ class AssignmentStoreTest {
         assertThat(assignment.profile()).isEqualTo("INCENDIUM");
         assertThat(assignment.datapacks()).extracting(PackAssignment::id).containsExactly("incendium");
     }
+
+    @Test void genericProfileDefaultsToOverworldRatherThanNether() throws IOException {
+        Path worlds = temp.resolve("worlds.yml");
+        Files.writeString(worlds, "worlds: {}\n");
+        Files.createDirectories(temp.resolve("backups"));
+
+        new AssignmentStore(temp).assign("test_1", "lukis-ancient-cities-v1.2", "GENERIC");
+        WorldAssignment assignment = new ConfigManager(temp).load().worlds().get("test_1");
+
+        assertThat(assignment.environment()).isEqualTo("NORMAL");
+        assertThat(assignment.sourceDimension().toString()).isEqualTo("minecraft:overworld");
+    }
+
+    @Test void stellarityProfileDefaultsToTheEnd() throws IOException {
+        Path worlds = temp.resolve("worlds.yml");
+        Files.writeString(worlds, "worlds: {}\n");
+        Files.createDirectories(temp.resolve("backups"));
+
+        new AssignmentStore(temp).assign("test_end", "stellarity", "STELLARITY");
+        WorldAssignment assignment = new ConfigManager(temp).load().worlds().get("test_end");
+
+        assertThat(assignment.environment()).isEqualTo("THE_END");
+        assertThat(assignment.sourceDimension().toString()).isEqualTo("minecraft:the_end");
+    }
 }
