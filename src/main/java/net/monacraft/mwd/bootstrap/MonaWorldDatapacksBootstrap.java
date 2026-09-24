@@ -33,14 +33,15 @@ public final class MonaWorldDatapacksBootstrap implements PluginBootstrap {
                     Collections.unmodifiableMap(results), List.copyOf(errors)));
             DatapackDiscoveryAdapter adapter = new DatapackDiscoveryAdapter();
             context.getLifecycleManager().registerEventHandler(LifecycleEvents.DATAPACK_DISCOVERY, event -> {
-                for (CompilationResult result : results.values()) {
-                    if (!result.success()) continue;
-                    try {
-                        adapter.discover(event.registrar(), result);
-                        context.getLogger().info("Discovered generated datapack monaworlddatapacks/{}", result.world());
-                    } catch (IOException | RuntimeException failure) {
-                        context.getLogger().error("Generated datapack '{}' was NOT enabled. Other worlds were not modified.", result.world(), failure);
-                    }
+                List<CompilationResult> successful=results.values().stream().filter(CompilationResult::success).toList();
+                if(successful.isEmpty())return;
+                try {
+                    String id=adapter.discoverBundle(event.registrar(),successful,
+                            context.getDataDirectory().resolve("compiled/monaworlddatapacks-generated.zip"));
+                    context.getLogger().info("Discovered generated datapack bundle {} for worlds {}",id,
+                            successful.stream().map(CompilationResult::world).toList());
+                } catch (IOException | RuntimeException failure) {
+                    context.getLogger().error("Generated datapack bundle was NOT enabled. Other worlds were not modified.", failure);
                 }
             });
         } catch (IOException | RuntimeException fatal) {

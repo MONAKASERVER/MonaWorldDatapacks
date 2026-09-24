@@ -38,6 +38,26 @@ class SyntheticDatapackTest {
         assertThat(new StellarityProfile().matches(analysis)).isTrue();
     }
 
+    @Test void acceptsIdenticalLegacyAndCurrentResourcePaths() throws IOException {
+        String loot = "{\"type\":\"minecraft:chest\",\"pools\":[]}";
+        Path pack = fixture("dual-path.zip", Map.of(
+                "data/ancient_cities/loot_table/ancient_city_barrel.json", loot,
+                "data/ancient_cities/loot_tables/ancient_city_barrel.json", loot
+        ));
+        DatapackAnalysis analysis = new DatapackScanner(ZipLimits.defaults()).scan("dual-path", pack);
+        assertThat(analysis.errors()).isEmpty();
+        assertThat(analysis.count(ResourceType.LOOT_TABLE)).isEqualTo(1);
+    }
+
+    @Test void rejectsConflictingLegacyAndCurrentResourcePaths() throws IOException {
+        Path pack = fixture("conflict.zip", Map.of(
+                "data/ancient_cities/loot_table/ancient_city_barrel.json", "{\"pools\":[]}",
+                "data/ancient_cities/loot_tables/ancient_city_barrel.json", "{\"pools\":[{\"rolls\":1,\"entries\":[]}]}"
+        ));
+        DatapackAnalysis analysis = new DatapackScanner(ZipLimits.defaults()).scan("conflict", pack);
+        assertThat(analysis.errors()).singleElement().asString().contains("different contents");
+    }
+
     private Path fixture(String name, Map<String, String> files) throws IOException {
         Path target = temp.resolve(name);
         try (ZipOutputStream out = new ZipOutputStream(Files.newOutputStream(target))) {

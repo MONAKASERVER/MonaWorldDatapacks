@@ -52,11 +52,9 @@ public final class DatapackScanner {
                 }
             }
         }
-        ResourceGraph graph;
-        try { graph = new ResourceGraph(resources); }
-        catch (IllegalArgumentException duplicate) {
-            errors.add(duplicate.getMessage()); graph = new ResourceGraph(deduplicate(resources));
-        }
+        Deduplication deduplication = deduplicate(resources);
+        errors.addAll(deduplication.conflicts());
+        ResourceGraph graph = new ResourceGraph(deduplication.resources());
         CompatibilityReport report = new CompatibilityAnalyzer().analyze(id, graph.nodes().values(), graph, namespaces, errors, unknownRefs);
         return new DatapackAnalysis(id, archive, hash, metadata, Collections.unmodifiableSet(namespaces),
                 List.copyOf(graph.nodes().values()), graph, List.copyOf(errors), List.copyOf(unknownRefs), report);
@@ -127,8 +125,22 @@ public final class DatapackScanner {
         try { return new ParsedPath(new ResourceKey(match.type(), new ResourceLocation(namespace, resourcePath))); }
         catch (IllegalArgumentException invalid) { return null; }
     }
-    private static List<ResourceNode> deduplicate(List<ResourceNode> nodes) {
-        Map<ResourceKey, ResourceNode> unique = new LinkedHashMap<>(); nodes.forEach(n -> unique.putIfAbsent(n.key(), n)); return List.copyOf(unique.values());
+    private static Deduplication deduplicate(List<ResourceNode> nodes) {
+        Map<ResourceKey, ResourceNode> unique = new LinkedHashMap<>();
+        List<String> conflicts = new ArrayList<>();
+        for (ResourceNode node : nodes) {
+            ResourceNode previous = unique.putIfAbsent(node.key(), node);
+            if (previous != null && !sameContents(previous, node)) {
+                conflicts.add("Duplicate resource with different contents: " + node.key()
+                        + " (" + previous.archivePath() + " vs " + node.archivePath() + ")");
+            }
+        }
+        return new Deduplication(List.copyOf(unique.values()), List.copyOf(conflicts));
+    }
+    private static boolean sameContents(ResourceNode left, ResourceNode right) {
+        if (left.isBinary() || right.isBinary())
+            return left.isBinary() && right.isBinary() && Arrays.equals(left.binary(), right.binary());
+        return Objects.equals(left.json(), right.json());
     }
     private static boolean looksLikeWorldgenResource(ResourceKey key) {
         String path = key.location().path();
@@ -137,4 +149,5 @@ public final class DatapackScanner {
                 || path.equals("dimension_type") || path.startsWith("dimension_type/");
     }
     private record ParsedPath(ResourceKey key) {}
+    private record Deduplication(List<ResourceNode> resources, List<String> conflicts) {}
 }
